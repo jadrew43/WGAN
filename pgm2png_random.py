@@ -38,30 +38,29 @@ def convert(src_path, dest_path):
     out_slice = np.zeros((block_width, block_width), dtype=np.int32)
     max_val = 2**16 - 1
     
-    for x in range(int(np.floor(width / block_width))):
-        for y in range(int(np.floor(height / block_width))):
-            x_sel = x * block_width
-            y_sel = y * block_width
-            pic_slice = picture[y_sel:y_sel+block_width, x_sel:x_sel+block_width]
-            bad_slice = 0
-            num_bad_pix = 0
-            for nx in range(block_width):
-                for ny in range(block_width):
-                    #out_slice[ny][nx] = max_val / block_width * nx
-                    if np.isinf(pic_slice[ny][nx]):
-                        num_bad_pix += 1
-                    else:
-                        out_slice[ny][nx] = max_val * 10 / pic_slice[ny][nx]
-                    if num_bad_pix > block_width / 3:
-                        bad_slice = 1
-                        break
-                if bad_slice:
+    for block_num in range(60):
+        x_sel = np.random.randint(0, width - block_width)
+        y_sel = np.random.randint(0, height - block_width)
+        pic_slice = picture[y_sel:y_sel+block_width, x_sel:x_sel+block_width]
+        bad_slice = 0
+        num_bad_pix = 0
+        for nx in range(block_width):
+            for ny in range(block_width):
+                #out_slice[ny][nx] = max_val / block_width * nx
+                if np.isinf(pic_slice[ny][nx]):
+                    num_bad_pix += 1
+                else:
+                    out_slice[ny][nx] = max_val * 20 / pic_slice[ny][nx]
+                if num_bad_pix > block_width / 3:
+                    bad_slice = 1
                     break
-            slices += 1
-            if not bad_slice:
-                good_slices += 1
-                img = Image.fromarray(out_slice, "I")
-                img.save(dest_path + "x" + str(x) + "y" + str(y) + ".png")
+            if bad_slice:
+                break
+        slices += 1
+        if not bad_slice:
+            good_slices += 1
+            img = Image.fromarray(out_slice, "I")
+            img.save(dest_path + "x" + str(x_sel) + "y" + str(y_sel) + ".png")
     print("max/good")
     print(slices)
     print(good_slices)
