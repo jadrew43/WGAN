@@ -497,7 +497,8 @@ def create_model(inputs, targets):
             learning_rate=1e-4, 
             beta1=0.5, 
             beta2=0.9   #original has single beta
-        ).minimize(
+        )
+        discrim_optim.minimize(
 #                disc_cost, 
             discrim_loss,   #loss already has GP incorporated
 #            var_list=disc_params
@@ -517,7 +518,8 @@ def create_model(inputs, targets):
                     learning_rate=1e-4, 
                     beta1=0.5, 
                     beta2=0.9
-                ).minimize(
+                )
+                gen_optim.minimize(
                     gen_loss, 
                     var_list=gen_tvars
                 )
@@ -595,85 +597,84 @@ def append_index(filesets, step=False):
 
 
 def main():
-    with tf.device('/gpu:0'):
-        os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
-        os.environ["CUDA_VISIBLE_DEVICES"] = "0"#use GPU_0
-        if a.seed is None:
-            a.seed = random.randint(0, 2**31 - 1)
-    
-        tf.set_random_seed(a.seed)
-        np.random.seed(a.seed)
-        random.seed(a.seed)
-    
-        if not os.path.exists(a.output_dir):
-            os.makedirs(a.output_dir)
-    
-        if a.mode == "test" or a.mode == "export":
-            if a.checkpoint is None:
-                raise Exception("checkpoint required for test mode")
-    
-            # load some options from the checkpoint
-            options = {"which_direction", "ngf", "ndf", "lab_colorization"}
-            with open(os.path.join(a.checkpoint, "options.json")) as f:
-                for key, val in json.loads(f.read()).items():
-                    if key in options:
-                        print("loaded", key, "=", val)
-                        setattr(a, key, val)
-            # disable these features in test mode
-            a.scale_size = CROP_SIZE
-            a.flip = False
-    
-        for k, v in a._get_kwargs():
-            print(k, "=", v)
-    
-        with open(os.path.join(a.output_dir, "options.json"), "w") as f:
-            f.write(json.dumps(vars(a), sort_keys=True, indent=4))
-    
-        if a.mode == "export":
-            # export the generator to a meta graph that can be imported later for standalone generation
-            if a.lab_colorization:
-                raise Exception("export not supported for lab_colorization")
-    
-            input = tf.placeholder(tf.string, shape=[1])
-            input_data = tf.decode_base64(input[0])
-            input_image = tf.image.decode_png(input_data)
-    
-            # remove alpha channel if present
-            input_image = tf.cond(tf.equal(tf.shape(input_image)[2], 4), lambda: input_image[:,:,:3], lambda: input_image)
-            # convert grayscale to RGB
-            input_image = tf.cond(tf.equal(tf.shape(input_image)[2], 1), lambda: tf.image.grayscale_to_rgb(input_image), lambda: input_image)
-    
-            input_image = tf.image.convert_image_dtype(input_image, dtype=tf.float32)
-            input_image.set_shape([CROP_SIZE, CROP_SIZE, 3])
-            batch_input = tf.expand_dims(input_image, axis=0)
-    
-            with tf.variable_scope("generator"):
-                batch_output = deprocess(create_generator(preprocess(batch_input), 3))
-    
-            output_image = tf.image.convert_image_dtype(batch_output, dtype=tf.uint8)[0]
-            if a.output_filetype == "png":
-                output_data = tf.image.encode_png(output_image)
-            elif a.output_filetype == "jpeg":
-                output_data = tf.image.encode_jpeg(output_image, quality=80)
-            else:
-                raise Exception("invalid filetype")
-            output = tf.convert_to_tensor([tf.encode_base64(output_data)])
-    
-            key = tf.placeholder(tf.string, shape=[1])
-            inputs = {
-                "key": key.name,
-                "input": input.name
-            }
-            tf.add_to_collection("inputs", json.dumps(inputs))
-            outputs = {
-                "key":  tf.identity(key).name,
-                "output": output.name,
-            }
-            tf.add_to_collection("outputs", json.dumps(outputs))
-    
-            init_op = tf.global_variables_initializer()
-            restore_saver = tf.train.Saver()
-            export_saver = tf.train.Saver()
+    os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
+    os.environ["CUDA_VISIBLE_DEVICES"] = "0"#use GPU_0
+    if a.seed is None:
+        a.seed = random.randint(0, 2**31 - 1)
+
+    tf.set_random_seed(a.seed)
+    np.random.seed(a.seed)
+    random.seed(a.seed)
+
+    if not os.path.exists(a.output_dir):
+        os.makedirs(a.output_dir)
+
+    if a.mode == "test" or a.mode == "export":
+        if a.checkpoint is None:
+            raise Exception("checkpoint required for test mode")
+
+        # load some options from the checkpoint
+        options = {"which_direction", "ngf", "ndf", "lab_colorization"}
+        with open(os.path.join(a.checkpoint, "options.json")) as f:
+            for key, val in json.loads(f.read()).items():
+                if key in options:
+                    print("loaded", key, "=", val)
+                    setattr(a, key, val)
+        # disable these features in test mode
+        a.scale_size = CROP_SIZE
+        a.flip = False
+
+    for k, v in a._get_kwargs():
+        print(k, "=", v)
+
+    with open(os.path.join(a.output_dir, "options.json"), "w") as f:
+        f.write(json.dumps(vars(a), sort_keys=True, indent=4))
+
+    if a.mode == "export":
+        # export the generator to a meta graph that can be imported later for standalone generation
+        if a.lab_colorization:
+            raise Exception("export not supported for lab_colorization")
+
+        input = tf.placeholder(tf.string, shape=[1])
+        input_data = tf.decode_base64(input[0])
+        input_image = tf.image.decode_png(input_data)
+
+        # remove alpha channel if present
+        input_image = tf.cond(tf.equal(tf.shape(input_image)[2], 4), lambda: input_image[:,:,:3], lambda: input_image)
+        # convert grayscale to RGB
+        input_image = tf.cond(tf.equal(tf.shape(input_image)[2], 1), lambda: tf.image.grayscale_to_rgb(input_image), lambda: input_image)
+
+        input_image = tf.image.convert_image_dtype(input_image, dtype=tf.float32)
+        input_image.set_shape([CROP_SIZE, CROP_SIZE, 3])
+        batch_input = tf.expand_dims(input_image, axis=0)
+
+        with tf.variable_scope("generator"):
+            batch_output = deprocess(create_generator(preprocess(batch_input), 3))
+
+        output_image = tf.image.convert_image_dtype(batch_output, dtype=tf.uint8)[0]
+        if a.output_filetype == "png":
+            output_data = tf.image.encode_png(output_image)
+        elif a.output_filetype == "jpeg":
+            output_data = tf.image.encode_jpeg(output_image, quality=80)
+        else:
+            raise Exception("invalid filetype")
+        output = tf.convert_to_tensor([tf.encode_base64(output_data)])
+
+        key = tf.placeholder(tf.string, shape=[1])
+        inputs = {
+            "key": key.name,
+            "input": input.name
+        }
+        tf.add_to_collection("inputs", json.dumps(inputs))
+        outputs = {
+            "key":  tf.identity(key).name,
+            "output": output.name,
+        }
+        tf.add_to_collection("outputs", json.dumps(outputs))
+
+        init_op = tf.global_variables_initializer()
+        restore_saver = tf.train.Saver()
+        export_saver = tf.train.Saver()
 
         with tf.Session() as sess:
             sess.run(init_op)
