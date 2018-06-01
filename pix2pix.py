@@ -541,7 +541,7 @@ def append_index(filesets, step=False):
 
 
 def main():
-    with tf.device('/gpu:0'):
+    with tf.device('/device:GPU:0'):
     
         os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
         os.environ["CUDA_VISIBLE_DEVICES"] = "0"#use GPU_0
