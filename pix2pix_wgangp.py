@@ -497,7 +497,8 @@ def create_model(inputs, targets):
             learning_rate=1e-4, 
             beta1=0.5, 
             beta2=0.9   #original has single beta
-        ).minimize(
+        )
+        discrim_optim.minimize(
 #                disc_cost, 
             discrim_loss,   #loss already has GP incorporated
 #            var_list=disc_params
@@ -517,7 +518,8 @@ def create_model(inputs, targets):
                     learning_rate=1e-4, 
                     beta1=0.5, 
                     beta2=0.9
-                ).minimize(
+                )
+                gen_optim.minimize(
                     gen_loss, 
                     var_list=gen_tvars
                 )
@@ -674,14 +676,14 @@ def main():
         restore_saver = tf.train.Saver()
         export_saver = tf.train.Saver()
 
-    with tf.Session() as sess:
-        sess.run(init_op)
-        print("loading model from checkpoint")
-        checkpoint = tf.train.latest_checkpoint(a.checkpoint)
-        restore_saver.restore(sess, checkpoint)
-        print("exporting model")
-        export_saver.export_meta_graph(filename=os.path.join(a.output_dir, "export.meta"))
-        export_saver.save(sess, os.path.join(a.output_dir, "export"), write_meta_graph=False)
+        with tf.Session() as sess:
+            sess.run(init_op)
+            print("loading model from checkpoint")
+            checkpoint = tf.train.latest_checkpoint(a.checkpoint)
+            restore_saver.restore(sess, checkpoint)
+            print("exporting model")
+            export_saver.export_meta_graph(filename=os.path.join(a.output_dir, "export.meta"))
+            export_saver.save(sess, os.path.join(a.output_dir, "export"), write_meta_graph=False)
 
         return
 
