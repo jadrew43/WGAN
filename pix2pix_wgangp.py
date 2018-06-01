@@ -476,30 +476,10 @@ def create_model(inputs, targets):
         gradients = tf.gradients(disc_interpolates, [interpolates])[0]
         slopes = tf.sqrt(tf.reduce_sum(tf.square(gradients), reduction_indices=[1]))
         gradient_penalty = tf.reduce_mean((slopes-1)**2)
-     
 #            disc_cost += LAMBDA*gradient_penalty
         discrim_loss += LAMBDA*gradient_penalty
-#        if MODE == 'wgan-gp':
-        disc_train_op = tf.train.AdamOptimizer(
-            learning_rate=1e-4, 
-            beta1=0.5, 
-            beta2=0.9
-        ).minimize(
-#                disc_cost, 
-            discrim_loss,
-            var_list=disc_params
-        )
-        if len(gen_params) > 0:
-            gen_train_op = tf.train.AdamOptimizer(
-                learning_rate=1e-4, 
-                beta1=0.5, 
-                beta2=0.9
-            ).minimize(
-                gen_cost, 
-                var_list=gen_params
-            )
-        else:
-            gen_train_op = tf.no_op()
+############### end from hw
+       
            
         
     with tf.name_scope("generator_loss"):
@@ -511,16 +491,42 @@ def create_model(inputs, targets):
 
     with tf.name_scope("discriminator_train"):
         discrim_tvars = [var for var in tf.trainable_variables() if var.name.startswith("discriminator")]
-        discrim_optim = tf.train.AdamOptimizer(a.lr, a.beta1)
+#        discrim_optim = tf.train.AdamOptimizer(a.lr, a.beta1)
+        ######### start add from wgangp hw
+        discrim_optim = tf.train.AdamOptimizer( #optimized using discrim loss + GP
+            learning_rate=1e-4, 
+            beta1=0.5, 
+            beta2=0.9   #original has single beta
+        ).minimize(
+#                disc_cost, 
+            discrim_loss,   #loss already has GP incorporated
+#            var_list=disc_params
+            var_list=discrim_tvars
+        )
+        ######### end add from wgangp hw
         discrim_grads_and_vars = discrim_optim.compute_gradients(discrim_loss, var_list=discrim_tvars)
         discrim_train = discrim_optim.apply_gradients(discrim_grads_and_vars)
+        
 
     with tf.name_scope("generator_train"):
         with tf.control_dependencies([discrim_train]):
             gen_tvars = [var for var in tf.trainable_variables() if var.name.startswith("generator")]
-            gen_optim = tf.train.AdamOptimizer(a.lr, a.beta1)
+#            gen_optim = tf.train.AdamOptimizer(a.lr, a.beta1)
+            if len(gen_tvars) > 0:
+                gen_optim = tf.train.AdamOptimizer(
+                    learning_rate=1e-4, 
+                    beta1=0.5, 
+                    beta2=0.9
+                ).minimize(
+                    gen_loss, 
+                    var_list=gen_tvars
+                )
+            else:
+                gen_optim = tf.no_op()
             gen_grads_and_vars = gen_optim.compute_gradients(gen_loss, var_list=gen_tvars)
             gen_train = gen_optim.apply_gradients(gen_grads_and_vars)
+            
+            
 
     ema = tf.train.ExponentialMovingAverage(decay=0.99)
     update_losses = ema.apply([discrim_loss, gen_loss_GAN, gen_loss_L1])
@@ -589,6 +595,8 @@ def append_index(filesets, step=False):
 
 
 def main():
+    os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
+    os.environ["CUDA_VISIBLE_DEVICES"] = "0"#use GPU_0
     if a.seed is None:
         a.seed = random.randint(0, 2**31 - 1)
 

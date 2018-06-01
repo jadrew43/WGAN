@@ -541,6 +541,8 @@ def append_index(filesets, step=False):
 
 
 def main():
+    os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
+    os.environ["CUDA_VISIBLE_DEVICES"] = "0"#use GPU_0
     if a.seed is None:
         a.seed = random.randint(0, 2**31 - 1)
 
