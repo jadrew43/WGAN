@@ -622,16 +622,16 @@ def main():
             restore_saver = tf.train.Saver()
             export_saver = tf.train.Saver()
 
-        with tf.Session() as sess:
-            sess.run(init_op)
-            print("loading model from checkpoint")
-            checkpoint = tf.train.latest_checkpoint(a.checkpoint)
-            restore_saver.restore(sess, checkpoint)
-            print("exporting model")
-            export_saver.export_meta_graph(filename=os.path.join(a.output_dir, "export.meta"))
-            export_saver.save(sess, os.path.join(a.output_dir, "export"), write_meta_graph=False)
-
-        return
+            with tf.Session() as sess:
+                sess.run(init_op)
+                print("loading model from checkpoint")
+                checkpoint = tf.train.latest_checkpoint(a.checkpoint)
+                restore_saver.restore(sess, checkpoint)
+                print("exporting model")
+                export_saver.export_meta_graph(filename=os.path.join(a.output_dir, "export.meta"))
+                export_saver.save(sess, os.path.join(a.output_dir, "export"), write_meta_graph=False)
+    
+            return
 
     examples = load_examples()
     print("examples count = %d" % examples.count)
