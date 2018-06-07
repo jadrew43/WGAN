@@ -494,9 +494,9 @@ def create_model(inputs, targets):
 #        discrim_optim = tf.train.AdamOptimizer(a.lr, a.beta1)
         ######### start add from wgangp hw
         discrim_optim = tf.train.AdamOptimizer( #optimized using discrim loss + GP
-            learning_rate=1e-4, 
+            learning_rate=2e-4, 
             beta1=0.5, 
-            beta2=0.9   #original has single beta
+#            beta2=0.9   #original has single beta
         )
         discrim_optim.minimize(
 #                disc_cost, 
@@ -515,9 +515,9 @@ def create_model(inputs, targets):
 #            gen_optim = tf.train.AdamOptimizer(a.lr, a.beta1)
             if len(gen_tvars) > 0:
                 gen_optim = tf.train.AdamOptimizer(
-                    learning_rate=1e-4, 
+                    learning_rate=2e-4, 
                     beta1=0.5, 
-                    beta2=0.9
+#                    beta2=0.9
                 )
                 gen_optim.minimize(
                     gen_loss, 
