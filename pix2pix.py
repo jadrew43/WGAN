@@ -19,6 +19,7 @@ import random
 import collections
 import math
 import time
+import matplotlib.pyplot as plt
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--input_dir", help="path to folder containing images")
@@ -50,6 +51,10 @@ parser.add_argument("--lr", type=float, default=0.0002, help="initial learning r
 parser.add_argument("--beta1", type=float, default=0.5, help="momentum term of adam")
 parser.add_argument("--l1_weight", type=float, default=100.0, help="weight on L1 term for generator gradient")
 parser.add_argument("--gan_weight", type=float, default=1.0, help="weight on GAN term for generator gradient")
+
+#lists for tracking network losses
+DL = list() #discriminator loss
+GL = list() #generator loss
 
 # export options
 parser.add_argument("--output_filetype", default="png", choices=["png", "jpeg"])
@@ -453,6 +458,7 @@ def create_model(inputs, targets):
         # predict_real => 1
         # predict_fake => 0
         discrim_loss = tf.reduce_mean(-(tf.log(predict_real + EPS) + tf.log(1 - predict_fake + EPS)))
+        DL.append(discrim_loss)
 
     with tf.name_scope("generator_loss"):
         # predict_fake => 1
@@ -460,6 +466,8 @@ def create_model(inputs, targets):
         gen_loss_GAN = tf.reduce_mean(-tf.log(predict_fake + EPS))
         gen_loss_L1 = tf.reduce_mean(tf.abs(targets - outputs))
         gen_loss = gen_loss_GAN * a.gan_weight + gen_loss_L1 * a.l1_weight
+        GL.append(gen_loss)
+        
 
     with tf.name_scope("discriminator_train"):
         discrim_tvars = [var for var in tf.trainable_variables() if var.name.startswith("discriminator")]
@@ -802,6 +810,11 @@ def main():
                     print("discrim_loss", results["discrim_loss"])
                     print("gen_loss_GAN", results["gen_loss_GAN"])
                     print("gen_loss_L1", results["gen_loss_L1"])
+                    plt.plot([range(len(GL)),GL])#blue line
+                    plt.plot([range(len(DL)),DL],'r-')#red line
+                    plt.ylabel('Loss')
+                    plt.xlabel('Epochs')
+                    plt.show()
 
                 if should(a.save_freq):
                     print("saving model")
